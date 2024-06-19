@@ -7,10 +7,8 @@ import math
 import warnings
 import torch.nn.functional as F
 
-from timesformer.models.helpers import load_pretrained
-from .build import MODEL_REGISTRY
 from itertools import repeat
-from torch._six import container_abcs
+
 
 DEFAULT_CROP_PCT = 0.875
 IMAGENET_DEFAULT_MEAN = (0.485, 0.456, 0.406)
@@ -74,13 +72,13 @@ def trunc_normal_(tensor, mean=0., std=1., a=-2., b=2.):
     return _no_grad_trunc_normal_(tensor, mean, std, a, b)
 
 # From PyTorch internals
-def _ntuple(n):
-    def parse(x):
-        if isinstance(x, container_abcs.Iterable):
-            return x
-        return tuple(repeat(x, n))
-    return parse
-to_2tuple = _ntuple(2)
+# def _ntuple(n):
+#     def parse(x):
+#         if isinstance(x, container_abcs.Iterable):
+#             return x
+#         return tuple(repeat(x, n))
+#     return parse
+# to_2tuple = _ntuple(2)
 
 # Calculate symmetric padding for a convolution
 def get_padding(kernel_size: int, stride: int = 1, dilation: int = 1, **_) -> int:

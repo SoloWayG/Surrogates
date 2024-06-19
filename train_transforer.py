@@ -3,8 +3,8 @@ from timm.scheduler.cosine_lr import CosineLRScheduler
 from read_npy import create_dataloaders
 import os
 import sys
-
-from timesformer.models.vit import TimeSformer,TimeSformer_3d,VisionTransformer_conv_aug
+print(sys.path)
+from TimeSformer.vit_utils import TimeSformer,TimeSformer_3d,VisionTransformer_conv_aug
 
 # from pathlib import Path
 # import torch

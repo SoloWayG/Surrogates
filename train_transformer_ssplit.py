@@ -4,9 +4,7 @@ from timm.scheduler.cosine_lr import CosineLRScheduler
 from read_npy import create_dataloaders
 import os
 import sys
-sys.path.append(os.getcwd())
-sys.path.append(os.getcwd()+'/TimeSformer')
-from timesformer.models.vit import VisionTransformer_conv_aug,TimeSformer
+from TimeSformer.vit import VisionTransformer_conv_aug,TimeSformer
 from pathlib import Path
 import torch
 from torchsummary import summary
@@ -39,6 +37,7 @@ def count_patch_size(imgsize):
 
 
 device =  torch.device("cuda" if torch.cuda.is_available() else "cpu")
+print(device)
 accumulation_steps = 4
 lr_max = 0.0005
 lr_min = 0.000001
@@ -65,11 +64,11 @@ predtreain_path = '/nfs/home/gsololvyev/Ice/NO_conv_simg_predtrain_False_LOSS_MA
 stride = 7
 resize_img = [35,30]
 if resize_img is not None:
-    mask = np.load(fr'Ice\coastline_masks\{place}_mask.npy')
+    mask = np.load(fr'project\coastline_masks\{place}_mask.npy')
     mask = resize(mask, (resize_img[0], resize_img[1]), anti_aliasing=False)
 else:
-    mask = np.load(fr'Ice\coastline_masks\{place}_mask.npy')
-dataloader_train, img_sizes = create_dataloaders(path_to_dir=f'Ice/{place}',
+    mask = np.load(fr'project\coastline_masks\{place}_mask.npy')
+dataloader_train, img_sizes = create_dataloaders(path_to_dir=f'project/{place}',
                                             batch_size=batch_size,
                                             in_period=in_period,
                                             predict_period=predict_period,
@@ -80,7 +79,7 @@ dataloader_train, img_sizes = create_dataloaders(path_to_dir=f'Ice/{place}',
                                             pad=False,
                                             train_test_split=None,
                                              resize_img=resize_img)
-dataloader_test, img_sizes = create_dataloaders(path_to_dir=f'Ice/{place}',
+dataloader_test, img_sizes = create_dataloaders(path_to_dir=f'project/{place}',
                                             batch_size=1,
                                             in_period=in_period,
                                             predict_period=predict_period,
@@ -167,7 +166,7 @@ optimizer_sch = CosineLRScheduler(optimizer, t_initial=120, lr_min=lr_min*10,
 # (batch x channels x frames x height x width)
 #dummy_video = torch.randn(1, 4, 452, 452)
 
-writer = SummaryWriter(f'Ice/writer2/{NAME}_weight_decay{weight_decay}_lr{lr_min}_{lr_max}_in_per_{in_period}_pred_per_{predict_period}_bs_{batch_size}_dates_{from_ymd_train[0]}to_{to_ymd_train[0]}_stride_{stride}sigmoid_accum_gr{accumulation_steps}')
+writer = SummaryWriter(f'writer/{NAME}_weight_decay{weight_decay}_lr{lr_min}_{lr_max}_in_per_{in_period}_pred_per_{predict_period}_bs_{batch_size}_dates_{from_ymd_train[0]}to_{to_ymd_train[0]}_stride_{stride}sigmoid_accum_gr{accumulation_steps}')
 params_dict = {
     'attn_drop_rate':attn_drop_rate,
     'dropout':dropout,
@@ -201,8 +200,8 @@ step = 0
 ep = 0
 test_step=0
 current_step = 0
-if not os.path.isdir(f'Ice//{NAME}'):
-    os.mkdir(f'Ice//{NAME}')
+if not os.path.isdir(f'project//{NAME}'):
+    os.mkdir(f'project//{NAME}')
 for epoch in tqdm(range(epochs)):
     writer.add_scalar('Lr',optimizer.param_groups[0]['lr'],ep)
     ep+=1
@@ -252,14 +251,14 @@ for epoch in tqdm(range(epochs)):
         torch.cuda.empty_cache()
     if ep%30==0:
         if PARALLEL:
-            torch.save(model.module.state_dict(), f'Ice//{NAME}/Module_model_weights_in_per_{in_period}_pred_per_{predict_period}_bs_{batch_size}__dates_{from_ymd_train[0]}to_{to_ymd_train[0]}_stride{stride}_sigmoid')
+            torch.save(model.module.state_dict(), f'project//{NAME}/Module_model_weights_in_per_{in_period}_pred_per_{predict_period}_bs_{batch_size}__dates_{from_ymd_train[0]}to_{to_ymd_train[0]}_stride{stride}_sigmoid')
         else:
-            torch.save(model.state_dict(), f'Ice//{NAME}/model_weights_in_per_{in_period}_pred_per_{predict_period}_bs_{batch_size}__dates_{from_ymd_train[0]}to_{to_ymd_train[0]}_stride{stride}_sigmoid')     
+            torch.save(model.state_dict(), f'project//{NAME}/model_weights_in_per_{in_period}_pred_per_{predict_period}_bs_{batch_size}__dates_{from_ymd_train[0]}to_{to_ymd_train[0]}_stride{stride}_sigmoid')     
 
 if PARALLEL:
-    torch.save(model.module.state_dict(), f'Ice//{NAME}/Module_model_weights_in_per_{in_period}_pred_per_{predict_period}_bs_{batch_size}__dates_{from_ymd_train[0]}to_{to_ymd_train[0]}_stride{stride}_sigmoid')
+    torch.save(model.module.state_dict(), f'project//{NAME}/Module_model_weights_in_per_{in_period}_pred_per_{predict_period}_bs_{batch_size}__dates_{from_ymd_train[0]}to_{to_ymd_train[0]}_stride{stride}_sigmoid')
 else:
-    torch.save(model.state_dict(), f'Ice//{NAME}/model_weights_in_per_{in_period}_pred_per_{predict_period}_bs_{batch_size}__dates_{from_ymd_train[0]}to_{to_ymd_train[0]}_stride{stride}_sigmoid')     
+    torch.save(model.state_dict(), f'project//{NAME}/model_weights_in_per_{in_period}_pred_per_{predict_period}_bs_{batch_size}__dates_{from_ymd_train[0]}to_{to_ymd_train[0]}_stride{stride}_sigmoid')     
 
 # for train in dataloaders[0]:
 #     predd = model(train[0].to('cuda'))

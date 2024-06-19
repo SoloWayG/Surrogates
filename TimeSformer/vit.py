@@ -11,7 +11,7 @@ from typing import List,Union
 
 from torch import einsum
 from einops import rearrange, reduce, repeat
-
+from TimeSformer.vit_utils import DropPath, trunc_normal_
 
 class Mlp(nn.Module):
     def __init__(self, in_features, hidden_features=None, out_features=None, act_layer=nn.GELU, drop=0.):
@@ -609,7 +609,7 @@ def _conv_filter(state_dict, patch_size=16):
         out_dict[k] = v
     return out_dict
 
-@MODEL_REGISTRY.register()
+ 
 class vit_base_patch16_224(nn.Module):
     def __init__(self, cfg, **kwargs):
         super(vit_base_patch16_224, self).__init__()
@@ -621,14 +621,11 @@ class vit_base_patch16_224(nn.Module):
         #self.model.default_cfg = default_cfgs['vit_base_patch16_224']
         self.num_patches = (cfg.DATA.TRAIN_CROP_SIZE // patch_size) * (cfg.DATA.TRAIN_CROP_SIZE // patch_size)
         pretrained_model=cfg.TIMESFORMER.PRETRAINED_MODEL
-        if self.pretrained:
-            load_pretrained(self.model, num_classes=self.model.num_classes, in_chans=kwargs.get('in_chans', 3), filter_fn=_conv_filter, img_size=cfg.DATA.TRAIN_CROP_SIZE, num_patches=self.num_patches, attention_type=self.attention_type, pretrained_model=pretrained_model)
-
     def forward(self, x):
         x = self.model(x)
         return x
 
-@MODEL_REGISTRY.register()
+ 
 class TimeSformer(nn.Module):
     def __init__(self, img_size=224, patch_size=16, num_classes=400, num_frames=8, attention_type='divided_space_time',  pretrained_model='', **kwargs):
         super(TimeSformer, self).__init__()
@@ -639,13 +636,13 @@ class TimeSformer(nn.Module):
         self.attention_type = attention_type
         #self.model.default_cfg = default_cfgs['vit_base_patch'+str(patch_size)+'_224']
         self.num_patches = (kwargs['output_size'][0] // patch_size[0]) * (kwargs['output_size'][1] // patch_size[1])
-        if self.pretrained:
-            load_pretrained(self.model, num_classes=self.model.num_classes, in_chans=kwargs.get('in_chans', 3), filter_fn=_conv_filter, img_size=img_size, num_frames=num_frames, num_patches=self.num_patches, attention_type=self.attention_type, pretrained_model=pretrained_model)
+          
+          
     def forward(self, x):
         x = self.model(x)
         return x
     
-@MODEL_REGISTRY.register()
+ 
 class TimeSformer_3d(nn.Module):
     def __init__(self, img_size=224, patch_size=16, num_classes=400, num_frames=8, attention_type='divided_space_time',  pretrained_model='', **kwargs):
         super(TimeSformer_3d, self).__init__()
@@ -656,14 +653,13 @@ class TimeSformer_3d(nn.Module):
         self.attention_type = attention_type
         #self.model.default_cfg = default_cfgs['vit_base_patch'+str(patch_size)+'_224']
         self.num_patches = (img_size // patch_size) * (img_size // patch_size)
-        if self.pretrained:
-            load_pretrained(self.model, num_classes=self.model.num_classes, in_chans=kwargs.get('in_chans', 3), filter_fn=_conv_filter, img_size=img_size, num_frames=num_frames, num_patches=self.num_patches, attention_type=self.attention_type, pretrained_model=pretrained_model)
+
     def forward(self, x):
         x = self.model(x)
         return x
 
 
-@MODEL_REGISTRY.register()
+ 
 class VisionTransformer_conv_aug(nn.Module):
     def __init__(self, img_size=224, patch_size=16, num_classes=400, num_frames=8, attention_type='divided_space_time',  pretrained_model='', **kwargs):
         super(VisionTransformer_conv_aug, self).__init__()
@@ -674,8 +670,6 @@ class VisionTransformer_conv_aug(nn.Module):
         self.attention_type = attention_type
         #self.model.default_cfg = default_cfgs['vit_base_patch'+str(patch_size)+'_224']
         self.num_patches = (kwargs['output_size'][0] // patch_size[0]) * (kwargs['output_size'][1] // patch_size[1])
-        if self.pretrained:
-            load_pretrained(self.model, num_classes=self.model.num_classes, in_chans=kwargs.get('in_chans', 3), filter_fn=_conv_filter, img_size=img_size, num_frames=num_frames, num_patches=self.num_patches, attention_type=self.attention_type, pretrained_model=pretrained_model)
     def forward(self, x):
         x = self.model(x)
         return x
