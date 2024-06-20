@@ -38,7 +38,7 @@ def count_patch_size(imgsize):
     return patch
 
 
-device =  torch.device("cuda" if torch.cuda.is_available() else "cpu")
+device =  torch.device("cuda:1" if torch.cuda.is_available() else "cpu")
 accumulation_steps = 1
 lr_max = 0.0005
 lr_min = 0.000001

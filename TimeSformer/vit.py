@@ -257,27 +257,79 @@ class VisionTransformer(nn.Module):
     def __init__(self,batch_size:int,output_size:List[int], img_size=224, patch_size=16, in_chans=3, num_classes=1000, embed_dim=768, depth=12,
                  num_heads=12, mlp_ratio=4., qkv_bias=False, qk_scale=None, drop_rate=0., attn_drop_rate=0.,
                  drop_path_rate=0.1, hybrid_backbone=None, norm_layer=nn.LayerNorm, num_frames=8, attention_type='divided_space_time', dropout=0.,
-                 out_chans=1,in_periods=1,place='Arctic'):
+                 out_chans=1,in_periods=1,place='Arctic',emb_mult=1):
         super().__init__()
+        self.emb_mult=emb_mult
         self.emb_dim = embed_dim
         self.in_period = in_periods
         self.attention_type = attention_type
         self.depth = depth
-        # self.S1 = (img_size//patch_size)**2*in_periods
-        # self.att_size = [1,self.S1*batch_size+1,embed_dim]
+        self.channel_from_1dim  = output_size[0]/patch_size[0]*output_size[1]/patch_size[1]*in_periods/output_size[0]
+        self.img_size = output_size
+         
         self.batch_size = batch_size
         self.dropout = nn.Dropout(dropout)
         self.num_classes = num_classes
         self.num_features = self.embed_dim = embed_dim  # num_features for consistency with other models
         self.patch_embed = PatchEmbed(
             img_size=output_size, patch_size=patch_size, in_chans=in_chans, embed_dim=embed_dim)
-        self.img_size = output_size
         num_patches = self.patch_embed.num_patches
-        self.out_chans = out_chans
         ###Conv layers
         self.padings = {'Arctic':[(3,1),(1,1),(1,0)],'kara':[(0,1),(0,1),(0,1)],'laptev':[(3,1),(1,0),(1,0)]}
 
-
+        ###new conv
+        # self.conv_pred = nn.Sequential(nn.Conv2d(in_channels=1,out_channels=1,kernel_size=(4,3),stride=(1,1),padding=(1,1))
+        #                                 )
+        
+        self.in_channels = int(self.emb_mult*self.channel_from_1dim)
+        print('in_channels',self.in_channels)
+        self.conv1_2 = nn.Sequential(nn.Conv2d(in_channels=self.in_channels,out_channels=self.in_channels*4,kernel_size=3,stride=1,padding=(1,1)),
+                                            nn.ReLU(),
+                                            nn.BatchNorm2d(self.in_channels*4))
+            
+        self.conv2_2 = nn.Sequential(nn.Conv2d(in_channels=self.in_channels*4,out_channels=256,kernel_size=3,stride=(1,1),padding=(1,1)),
+                                        nn.ReLU(),
+                                        nn.BatchNorm2d(256),
+                                        nn.Conv2d(in_channels=256,out_channels=out_chans,kernel_size=3,stride=(1,1),padding=(1,1)),
+                                        nn.ReLU(),
+                                        nn.BatchNorm2d(out_chans))
+        # if place=='laptev':
+        #     self.conv1_2 = nn.Sequential(nn.Conv2d(in_channels=self.in_period,out_channels=64,kernel_size=3,stride=(2,2),padding=(3,1)),
+        #                                     nn.ReLU(),
+        #                                     nn.BatchNorm2d(64))
+            
+        #     self.conv2_2 = nn.Sequential(nn.Conv2d(in_channels=64,out_channels=256,kernel_size=3,stride=(1,1),padding=(1,0)),
+        #                                     nn.ReLU(),
+        #                                     nn.BatchNorm2d(256),
+        #                                     nn.Conv2d(in_channels=256,out_channels=out_chans,kernel_size=3,stride=(1,1),padding=(1,0)),
+        #                                     nn.ReLU(),
+        #                                     nn.BatchNorm2d(out_chans))
+        # elif place=='Arctic':
+        #     self.conv1_2 = nn.Sequential(nn.Conv2d(in_channels=self.in_period,out_channels=64,kernel_size=3,stride=(2,2),padding=(3,1)),
+        #                                     nn.ReLU(),
+        #                                     nn.BatchNorm2d(64))
+            
+        #     self.conv2_2 = nn.Sequential(nn.Conv2d(in_channels=64,out_channels=256,kernel_size=3,stride=(1,1),padding=(1,1)),
+        #                                     nn.ReLU(),
+        #                                     nn.BatchNorm2d(256),
+        #                                     nn.Conv2d(in_channels=256,out_channels=out_chans,kernel_size=3,stride=(1,1),padding=(1,1)),
+        #                                     nn.ReLU(),
+        #                                     nn.BatchNorm2d(out_chans))
+        # if place=='kara':
+        #     self.conv1_2 = nn.Sequential(nn.Conv2d(in_channels=self.in_period,out_channels=64,kernel_size=3,stride=(2,2),padding=(0,1)),
+        #                                     nn.ReLU(),
+        #                                     nn.BatchNorm2d(64))
+            
+        #     self.conv2_2 = nn.Sequential(nn.Conv2d(in_channels=64,out_channels=256,kernel_size=3,stride=(1,1),padding=(0,1)),
+        #                                     nn.ReLU(),
+        #                                     nn.BatchNorm2d(256),
+        #                                     nn.Conv2d(in_channels=256,out_channels=out_chans,kernel_size=3,stride=(1,1),padding=(0,1)),
+        #                                     nn.ReLU(),
+        #                                     nn.BatchNorm2d(out_chans))
+        # self.conv3_3 = nn.Sequential(nn.Conv2d(in_channels=256,out_channels=out_chans,kernel_size=3,stride=1,padding=self.padings[place][0]),
+        #                                     nn.ReLU(),
+        #                            
+        #          nn.BatchNorm2d(out_chans))
         # ## Positional Embeddings
         self.sigm = nn.Sigmoid()
         self.cls_token = nn.Parameter(torch.zeros(1, 1, embed_dim))
@@ -385,35 +437,28 @@ class VisionTransformer(nn.Module):
             x = torch.mean(x, 1) # averaging predictions for every frame
 
         x = self.norm(x)
-        y1 = torch.reshape(x,(x.shape[0],1,x.shape[1],x.shape[2]))
-        img_scaling = x.shape[1]//(self.img_size[0]*self.out_chans)*self.img_size[0]*self.out_chans
-        y2 = F.interpolate(y1,(img_scaling,y1.shape[-1]))
-        y3 = torch.reshape(y2,(y2.shape[0],self.out_chans,y2.shape[2]//self.out_chans,y2.shape[3]))
-        y = F.interpolate(y3,(self.img_size[0],self.img_size[1]))
-
-        # x1 = torch.reshape(x,(self.batch_size,x.shape[2],x.shape[1]))
-        # x2 = nn.functional.interpolate(x1,img_scaling)
-        # scale_factor_out = x2.shape[2]*x2.shape[1]//self.img_size[0]//self.img_size[1]//self.out_chans#self.out_chan
-        # x3 = torch.reshape(x2,(self.batch_size,self.out_chans,self.img_size[0]*scale_factor_out,self.img_size[1]*2))
-        # y = nn.functional.interpolate(x3,(self.img_size[0],self.img_size[1]),mode='bilinear')
-        #x3 = torch.reshape(x2,(self.batch_size,x2.shape[2]//self.img_size[0]*2,self.img_size[0],self.img_size[1]))
-        
         # y1 = self.conv1(x.unsqueeze(1))
         # y2 = torch.reshape(y1,(self.batch_size,128,y1.shape[2]//2,self.embed_dim))
         # y3 = self.conv2(y2)
         # y4 = self.conv3(y3)
-
+        y1 = torch.reshape(x,(x.shape[0],1,x.shape[1],x.shape[2]))
+        img_scaling = x.shape[1]//(self.img_size[0])*self.img_size[0]
+        dim2_scale = x.shape[1]//(self.img_size[0])
+        dim3_scale = x.shape[2]//(self.img_size[1])
+        y2 = F.interpolate(y1,(img_scaling,y1.shape[-1]))
+        y3 = torch.reshape(y2,(y2.shape[0],dim2_scale*dim3_scale,y2.shape[2]//dim2_scale,y2.shape[3]//dim3_scale))
+        
         # x1 = self.conv_pred(x.unsqueeze(1))
-        # x1 = torch.reshape(x1,(self.batch_size,self.in_period,x1.shape[2]//self.in_period,self.embed_dim))
-        # x2 = self.conv1_2(x1)
-        # x3 = self.conv2_2(x2)
-        return self.sigm(y)
+        # x1 = torch.reshape(x1,(x1.shape[0],self.in_period,x1.shape[2]//self.in_period,self.embed_dim))
+        x2 = self.conv1_2(y3)
+        x3 = self.conv2_2(x2)
+        return self.sigm(x3)
 
     def forward(self, x):
         x = self.forward_features(x)
         #x = self.head(x)
         return x
-    
+ 
 
 class VisionTransformer_3d(nn.Module):
     """ Vision Transformere
@@ -636,8 +681,6 @@ class TimeSformer(nn.Module):
         self.attention_type = attention_type
         #self.model.default_cfg = default_cfgs['vit_base_patch'+str(patch_size)+'_224']
         self.num_patches = (kwargs['output_size'][0] // patch_size[0]) * (kwargs['output_size'][1] // patch_size[1])
-          
-          
     def forward(self, x):
         x = self.model(x)
         return x
@@ -851,17 +894,6 @@ class VisionTransformer_conv_augment(nn.Module):
         x = self.forward_features(x)
         #x = self.head(x)
         return x
-    
-
-class DropPath(nn.Module):
-    """Drop paths (Stochastic Depth) per sample  (when applied in main path of residual blocks).
-    """
-    def __init__(self, drop_prob=None):
-        super(DropPath, self).__init__()
-        self.drop_prob = drop_prob
-
-    def forward(self, x):
-        return drop_path(x, self.drop_prob, self.training)
     
 def drop_path(x, drop_prob: float = 0., training: bool = False):
     """Drop paths (Stochastic Depth) per sample (when applied in main path of residual blocks).
