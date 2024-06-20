@@ -16,6 +16,7 @@ __pycache__/
 *$py.class
 .idea
 .weight_timesformer/
+.weight_timesformer
 # C extensions
 *.so
 *model_weights
