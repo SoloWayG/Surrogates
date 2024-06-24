@@ -39,8 +39,10 @@ share/python-wheels/
 .installed.cfg
 *.egg
 MANIFEST
-
-
+# Seas
+kara
+laptev
+OLD_CONVTimeSformer_aug_simg_predtrain_True_LOSS_MAE_depth_11_num_heads_12_emb_dim_600
 # PyInstaller
 #  Usually these files are written by a python script from a template
 #  before PyInstaller builds the exe, so as to inject date/other infos into it.

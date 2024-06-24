@@ -1,12 +1,12 @@
-from multiprocessing import reduction
-import sched
+#from multiprocessing import reduction
+#import sched
 from timm.scheduler.cosine_lr import CosineLRScheduler
 from read_npy import create_dataloaders
 import os
 import sys
-sys.path.append(os.getcwd())
-sys.path.append(os.getcwd()+'/TimeSformer')
-from timesformer.models.vit import VisionTransformer_conv_aug,TimeSformer
+# sys.path.append(os.getcwd())
+# sys.path.append(os.getcwd()+'/TimeSformer')
+from TimeSformer.vit import VisionTransformer_conv_aug,TimeSformer
 from pathlib import Path
 import torch
 from torchsummary import summary
@@ -15,7 +15,7 @@ from tqdm import tqdm
 import matplotlib.pyplot as plt
 import torchvision
 import numpy as np
-from pytorch_msssim import ssim, ms_ssim, SSIM, MS_SSIM
+#from pytorch_msssim import ssim, ms_ssim, SSIM, MS_SSIM
 from skimage.transform import resize
 
 def count_parameters(model):
@@ -57,7 +57,7 @@ to_ymd_test=[2024, 1, 1]
 load_predtrain = True
 depth = 11
 LOSS = 'MAE'
-predtreain_path = r'D:\Projects\test_cond\AAAI_code\Ice\OLD_CONV(TimeSformer)_aug_simg_predtrain_True_LOSS_MAE_depth_11_num_heads_12_emb_dim_600\model_weights_in_per_104_pred_per_52_bs_1__dates_1979to_2012_stride7_sigmoid_ep80'
+predtreain_path = r'/projects/Surrogates/OLD_CONVTimeSformer_aug_simg_predtrain_True_LOSS_MAE_depth_11_num_heads_12_emb_dim_600/model_weights_in_per_104_pred_per_52_bs_1__dates_1979to_2012_stride7_sigmoid'
 
 
 
@@ -113,7 +113,7 @@ NAME = f'test52_droptrue__ep80_{load_predtrain}_LOSS_{LOSS}dropout{dropout}_dept
 
 if LOSS=="MAE":
     loss_l1 = torch.nn.L1Loss(reduction='none')
-loss_sim = SSIM(data_range=1, size_average=True, channel=predict_period)
+#loss_sim = SSIM(data_range=1, size_average=True, channel=predict_period)
 
 # def loss_fn(x,y):
 #     out = loss_l1(x,y)
@@ -167,7 +167,7 @@ optimizer_sch = CosineLRScheduler(optimizer, t_initial=120, lr_min=lr_min*10,
 # (batch x channels x frames x height x width)
 #dummy_video = torch.randn(1, 4, 452, 452)
 
-writer = SummaryWriter(f'Ice/writer_test/{NAME}_weight_decay{weight_decay}_lr{lr_min}_{lr_max}_in_per_{in_period}_pred_per_{predict_period}_bs_{batch_size}_dates_{from_ymd_train[0]}to_{to_ymd_train[0]}_stride_{stride}sigmoid_accum_gr{accumulation_steps}')
+writer = SummaryWriter(f'writer_test/{NAME}_weight_decay{weight_decay}_lr{lr_min}_{lr_max}_in_per_{in_period}_pred_per_{predict_period}_bs_{batch_size}_dates_{from_ymd_train[0]}to_{to_ymd_train[0]}_stride_{stride}sigmoid_accum_gr{accumulation_steps}')
 params_dict = {
     'attn_drop_rate':attn_drop_rate,
     'dropout':dropout,
