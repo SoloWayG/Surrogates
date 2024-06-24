@@ -13,11 +13,20 @@ from tqdm import tqdm
 import matplotlib.pyplot as plt
 import torchvision
 import numpy as np
-from pytorch_msssim import ssim, ms_ssim, SSIM, MS_SSIM
+#from pytorch_msssim import ssim, ms_ssim, SSIM, MS_SSIM
 from skimage.transform import resize
 
 def count_parameters(model):
     return sum(p.numel() for p in model.parameters() if p.requires_grad)
+
+def check_size_for_reize(img_size,num_heads):
+    if img_size[0]%num_heads!=0:
+        img_size_new = [(int(img_size[0]/num_heads)+1)*num_heads,img_size[1]]
+        print("New image size is",img_size_new)
+        return img_size_new
+    else:
+        return img_size
+
 
 def embed_dim_by_img(img,num_heads,emb_mult):
     emb_dim = img*emb_mult
@@ -38,17 +47,17 @@ def count_patch_size(imgsize):
 
 device =  torch.device("cuda" if torch.cuda.is_available() else "cpu")
 print(device)
-accumulation_steps = 2
+accumulation_steps = 4
 lr_max = 0.0005
 lr_min = 0.000001
 epochs = 140
 predict_period = 52
 in_period = 104
-batch_size = 4
+batch_size = 2
 num_heads=12
 emb_mult=5
 place='laptev'
-PARALLEL = False
+PARALLEL = True
 from_ymd_train=[1979, 1, 1]
 to_ymd_train=[2012,1,1]
 from_ymd_test=[2012,1,2]
@@ -56,17 +65,18 @@ to_ymd_test=[2020, 1, 1]
 load_predtrain = True
 depth = 11
 LOSS = 'MAE'
-predtreain_path = '/projects/Surrogates/OLD_CONVTimeSformer_aug_simg_predtrain_True_LOSS_MAE_depth_11_num_heads_12_emb_dim_600/model_weights_in_per_104_pred_per_52_bs_1__dates_1979to_2012_stride7_sigmoid_ep80'
+predtreain_path = 'OLD_CONVTimeSformer_aug_simg_predtrain_True_LOSS_MAE_depth_11_num_heads_12_emb_dim_600/model_weights_in_per_104_pred_per_52_bs_1__dates_1979to_2012_stride7_sigmoid_ep80'
 
 #[2012,1,1] to [2012,1,1] [2020,1,1]
 stride = 7
-resize_img = [35,30]
+resize_img = [72,60]
 if resize_img is not None:
-    mask = np.load(fr'project/coastline_masks/{place}_mask.npy')
+    resize_img = check_size_for_reize(resize_img,num_heads=num_heads)
+    mask = np.load(fr'coastline_masks/{place}_mask.npy')
     mask = resize(mask, (resize_img[0], resize_img[1]), anti_aliasing=False)
 else:
-    mask = np.load(fr'project/coastline_masks/{place}_mask.npy')
-dataloader_train, img_sizes = create_dataloaders(path_to_dir=f'project/{place}',
+    mask = np.load(fr'coastline_masks/{place}_mask.npy')
+dataloader_train, img_sizes = create_dataloaders(path_to_dir=f'{place}',
                                             batch_size=batch_size,
                                             in_period=in_period,
                                             predict_period=predict_period,
@@ -76,8 +86,8 @@ dataloader_train, img_sizes = create_dataloaders(path_to_dir=f'project/{place}',
                                             to_ymd=to_ymd_train,
                                             pad=False,
                                             train_test_split=None,
-                                             resize_img=resize_img)
-dataloader_test, img_sizes = create_dataloaders(path_to_dir=f'project/{place}',
+                                            resize_img=resize_img)
+dataloader_test, img_sizes = create_dataloaders(path_to_dir=f'{place}',
                                             batch_size=1,
                                             in_period=in_period,
                                             predict_period=predict_period,
@@ -87,7 +97,7 @@ dataloader_test, img_sizes = create_dataloaders(path_to_dir=f'project/{place}',
                                             to_ymd=to_ymd_test,
                                             pad=False,
                                             train_test_split=None,
-                                             resize_img=resize_img)
+                                            resize_img=resize_img)
 
 train_len = dataloader_train.__len__()
 test_len = dataloader_test.__len__()
@@ -133,8 +143,8 @@ if PARALLEL:
         model_dict.update(test_dict)
         model.load_state_dict(model_dict)
         pretrained_dict = {k: v for k, v in model_dict_pred_train.items() if k in model_dict}
-        model_dict.update(pretrained_dict)
-        model.load_state_dict(pretrained_dict)
+        # model_dict.update(pretrained_dict)
+        # model.load_state_dict(pretrained_dict)
     model = torch.nn.DataParallel(model)
     model.to(device)
 else:
@@ -198,8 +208,8 @@ step = 0
 ep = 0
 test_step=0
 current_step = 0
-if not os.path.isdir(f'project//{NAME}'):
-    os.mkdir(f'project//{NAME}')
+if not os.path.isdir(f'{NAME}'):
+    os.mkdir(f'{NAME}')
 for epoch in tqdm(range(epochs)):
     writer.add_scalar('Lr',optimizer.param_groups[0]['lr'],ep)
     ep+=1
@@ -249,14 +259,14 @@ for epoch in tqdm(range(epochs)):
         torch.cuda.empty_cache()
     if ep%30==0:
         if PARALLEL:
-            torch.save(model.module.state_dict(), f'project//{NAME}/Module_model_weights_in_per_{in_period}_pred_per_{predict_period}_bs_{batch_size}__dates_{from_ymd_train[0]}to_{to_ymd_train[0]}_stride{stride}_sigmoid')
+            torch.save(model.module.state_dict(), f'{NAME}/Module_model_weights_in_per_{in_period}_pred_per_{predict_period}_bs_{batch_size}__dates_{from_ymd_train[0]}to_{to_ymd_train[0]}_stride{stride}_sigmoid')
         else:
-            torch.save(model.state_dict(), f'project//{NAME}/model_weights_in_per_{in_period}_pred_per_{predict_period}_bs_{batch_size}__dates_{from_ymd_train[0]}to_{to_ymd_train[0]}_stride{stride}_sigmoid')     
+            torch.save(model.state_dict(), f'{NAME}/model_weights_in_per_{in_period}_pred_per_{predict_period}_bs_{batch_size}__dates_{from_ymd_train[0]}to_{to_ymd_train[0]}_stride{stride}_sigmoid')     
 
 if PARALLEL:
-    torch.save(model.module.state_dict(), f'project//{NAME}/Module_model_weights_in_per_{in_period}_pred_per_{predict_period}_bs_{batch_size}__dates_{from_ymd_train[0]}to_{to_ymd_train[0]}_stride{stride}_sigmoid')
+    torch.save(model.module.state_dict(), f'{NAME}/Module_model_weights_in_per_{in_period}_pred_per_{predict_period}_bs_{batch_size}__dates_{from_ymd_train[0]}to_{to_ymd_train[0]}_stride{stride}_sigmoid')
 else:
-    torch.save(model.state_dict(), f'project//{NAME}/model_weights_in_per_{in_period}_pred_per_{predict_period}_bs_{batch_size}__dates_{from_ymd_train[0]}to_{to_ymd_train[0]}_stride{stride}_sigmoid')     
+    torch.save(model.state_dict(), f'{NAME}/model_weights_in_per_{in_period}_pred_per_{predict_period}_bs_{batch_size}__dates_{from_ymd_train[0]}to_{to_ymd_train[0]}_stride{stride}_sigmoid')     
 
 # for train in dataloaders[0]:
 #     predd = model(train[0].to('cuda'))

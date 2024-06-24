@@ -264,7 +264,7 @@ class VisionTransformer(nn.Module):
         self.in_period = in_periods
         self.attention_type = attention_type
         self.depth = depth
-        self.channel_from_1dim  = output_size[0]/patch_size[0]*output_size[1]/patch_size[1]*in_periods/output_size[0]
+        self.channel_from_1dim  = output_size[0]//patch_size[0]*output_size[1]//patch_size[1]*in_periods//output_size[0]
         self.img_size = output_size
          
         self.batch_size = batch_size
@@ -676,7 +676,7 @@ class TimeSformer(nn.Module):
         super(TimeSformer, self).__init__()
         self.pretrained=False
         #self.emb_dim=kwargs['embeded_dim']
-        self.model = VisionTransformer(img_size=img_size, num_classes=num_classes, patch_size=patch_size, mlp_ratio=4, qkv_bias=True, norm_layer=partial(nn.LayerNorm, eps=1e-6), drop_rate=0., attn_drop_rate=0., drop_path_rate=0.1, num_frames=num_frames, attention_type=attention_type, **kwargs)
+        self.model = VisionTransformer(img_size=img_size, num_classes=num_classes, patch_size=patch_size, mlp_ratio=4, qkv_bias=True, norm_layer=partial(nn.LayerNorm, eps=1e-6), drop_rate=0., num_frames=num_frames, attention_type=attention_type, **kwargs)
 
         self.attention_type = attention_type
         #self.model.default_cfg = default_cfgs['vit_base_patch'+str(patch_size)+'_224']

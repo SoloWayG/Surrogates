@@ -279,16 +279,16 @@ def create_dataloaders(path_to_dir,
 
 if __name__=='__main__':
     # dataset = IceDataset(path_to_dir='/nfs/home/gsololvyev/down/Arctic',test_end=10,period=2)
-    dataloaders,sizes = create_dataloaders(path_to_dir=r'D:\Projects\test_cond\AAAI_code\Ice\kara',
+    dataloaders,sizes = create_dataloaders(path_to_dir=r'laptev',
                                     batch_size=1,
-                                    in_period=104,
-                                    predict_period=52,
+                                    in_period=2,
+                                    predict_period=2,
                                     stride=7,
                                     test_end=None,
                                     from_ymd=[2012, 1, 1],
-                                    to_ymd=[2032, 4, 4],
+                                    to_ymd=[2013, 4, 4],
                                     pad=False,
-                                    resize_img=[70,60],
+                                    resize_img=[55,65],
                                     train_test_split=None)
 ####
     for train in dataloaders:
