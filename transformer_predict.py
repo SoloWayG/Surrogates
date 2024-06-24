@@ -4,6 +4,7 @@ from timm.scheduler.cosine_lr import CosineLRScheduler
 from read_npy import create_dataloaders
 import os
 import sys
+print(sys.path)
 # sys.path.append(os.getcwd())
 # sys.path.append(os.getcwd()+'/TimeSformer')
 from TimeSformer.vit import VisionTransformer_conv_aug,TimeSformer
@@ -38,7 +39,7 @@ def count_patch_size(imgsize):
     return patch
 
 
-device =  torch.device("cuda:1" if torch.cuda.is_available() else "cpu")
+device =  torch.device("cuda" if torch.cuda.is_available() else "cpu")
 accumulation_steps = 1
 lr_max = 0.0005
 lr_min = 0.000001
@@ -65,10 +66,10 @@ predtreain_path = r'/projects/Surrogates/OLD_CONVTimeSformer_aug_simg_predtrain_
 stride = 7
 resize_img = None
 if resize_img is not None:
-    mask = np.load(fr'Ice\coastline_masks\{place}_mask.npy')
+    mask = np.load(fr'coastline_masks/{place}_mask.npy')
     mask = resize(mask, (resize_img[0], resize_img[1]), anti_aliasing=False)
 else:
-    mask = np.load(fr'Ice\coastline_masks\{place}_mask.npy')
+    mask = np.load(fr'coastline_masks/{place}_mask.npy')
 # dataloader_train, img_sizes = create_dataloaders(path_to_dir=f'Ice/{place}',
 #                                             batch_size=batch_size,
 #                                             in_period=in_period,
@@ -80,7 +81,7 @@ else:
 #                                             pad=False,
 #                                             train_test_split=None,
 #                                              resize_img=resize_img)
-dataloader_test, img_sizes = create_dataloaders(path_to_dir=f'Ice/{place}',
+dataloader_test, img_sizes = create_dataloaders(path_to_dir=f'{place}',
                                             batch_size=1,
                                             in_period=in_period,
                                             predict_period=predict_period,
@@ -90,7 +91,8 @@ dataloader_test, img_sizes = create_dataloaders(path_to_dir=f'Ice/{place}',
                                             to_ymd=to_ymd_test,
                                             pad=False,
                                             train_test_split=None,
-                                             resize_img=resize_img)
+                                             resize_img=resize_img,
+                                             shift=predict_period)
 
 #train_len = dataloader_train.__len__()
 test_len = dataloader_test.__len__()
@@ -108,7 +110,7 @@ dropout=0.1
 attn_drop_rate=0.1
 #Loss f-n
 ####################
-NAME = f'test52_droptrue__ep80_{load_predtrain}_LOSS_{LOSS}dropout{dropout}_depth_{depth}attn_drop_rate{attn_drop_rate}_num_heads_{num_heads}_emb_dim_{embed_dim}'#last num_heads=6
+NAME = f'test_SHIFT__ep80_{load_predtrain}_LOSS_{LOSS}dropout{dropout}_depth_{depth}attn_drop_rate{attn_drop_rate}_num_heads_{num_heads}_emb_dim_{embed_dim}'#last num_heads=6
 ####################
 
 if LOSS=="MAE":
@@ -201,8 +203,8 @@ step = 0
 ep = 0
 test_step=0
 current_step = 0
-if not os.path.isdir(f'Ice//{NAME}'):
-    os.mkdir(f'Ice//{NAME}')
+if not os.path.isdir(f'{NAME}'):
+    os.mkdir(f'{NAME}')
 for epoch in tqdm(range(epochs)):
     # writer.add_scalar('Lr',optimizer.param_groups[0]['lr'],ep)
     # ep+=1

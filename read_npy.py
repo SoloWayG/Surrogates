@@ -28,7 +28,8 @@ class IceDataset(Dataset):
                  to_ymd: Union[list, None] = None,
                  pad:bool = False,
                  shuffle=True,
-                 resize_img: Union[List[int], None] = None
+                 resize_img: Union[List[int], None] = None,
+                 shift: int =1
                  ):
         """_summary_
 
@@ -48,6 +49,7 @@ class IceDataset(Dataset):
         self.period = in_period
         self.predict_period = predict_period
         self.stride = stride
+        self.shift = shift
         self.data = []
         self.dates = []
         self.end = test_end
@@ -59,12 +61,12 @@ class IceDataset(Dataset):
 
     def __len__(self):
         self.lent = [i for i in range(self.data.shape[1]-self.period-self.predict_period+1)]
-        return self.data.shape[1]-self.period-self.predict_period+1
+        return int((self.data.shape[1]-self.period-self.predict_period+1)/self.shift)
     #TODO true_size function redefined by string 97 below
     def true_size(self):
         return self.true_size
 
-    def __getitem__(self, idx,stride=1):
+    def __getitem__(self, idx):
         """_summary_
 
         Args:
@@ -77,17 +79,17 @@ class IceDataset(Dataset):
         #     idx = random.choice(self.lent)
         #     self.lent.remove(idx)
         if self.pad:
-            self.pad_shape= (self.data[:,idx*stride:idx*stride+self.period].shape[0],
-                             self.data[:,idx*stride:idx*stride+self.period].shape[1],
-                             np.max(self.data[:,idx*stride:idx*stride+self.period].shape),
-                             np.max(self.data[:,idx*stride:idx*stride+self.period].shape))
+            self.pad_shape= (self.data[:,idx*self.shift:idx*self.shift+self.period].shape[0],
+                             self.data[:,idx*self.shift:idx*self.shift+self.period].shape[1],
+                             np.max(self.data[:,idx*self.shift:idx*self.shift+self.period].shape),
+                             np.max(self.data[:,idx*self.shift:idx*self.shift+self.period].shape))
             
             return np.pad(self.data[:,idx:idx+self.period],
                            [(0,i) for i in np.subtract(self.pad_shape, self.data[:,idx:idx+self.period].shape)],
                              'constant',
                                constant_values=0), self.data[:,idx+self.period:idx+self.period+self.predict_period], self.dates[idx:idx+self.period], self.dates[idx+self.period:idx+self.period+self.predict_period]
         else:
-            return self.data[:,idx*stride:idx*stride+self.period], self.data[:,idx*stride+self.period:idx*stride+self.period+self.predict_period], self.dates[idx*stride:idx*stride+self.period],self.dates[idx*stride+self.period:idx*stride+self.period+self.predict_period]
+            return self.data[:,idx*self.shift:idx*self.shift+self.period], self.data[:,idx*self.shift+self.period:idx*self.shift+self.period+self.predict_period], self.dates[idx*self.shift:idx*self.shift+self.period],self.dates[idx*self.shift+self.period:idx*self.shift+self.period+self.predict_period]
     def __load_npz__(self):
         l_dir = self.list_dir
         # l_dir = self._choose_datetime_period(l_dir)
@@ -167,7 +169,8 @@ def create_dataloaders(path_to_dir,
                        to_ymd: Union[list, None] = None,
                        train_test_split: Union[float, None] = 0.2,
                        pad:bool=False,
-                       resize_img: Union[List[int], None] = None
+                       resize_img: Union[List[int], None] = None,
+                       shift: int=1
                        ) -> Tuple[Union[torch.utils.data.DataLoader,
                                                                             List[torch.utils.data.DataLoader]],tuple]:
     """
@@ -177,6 +180,7 @@ def create_dataloaders(path_to_dir,
     
 
     Args:
+        shift (int): step in predict case. Need to place a predict period step. Defaults to 1.
         path_to_dir (_type_): _description_
         batch_size (int, optional): _description_. Defaults to 16.
         shuffle_dataset (bool, optional): _description_. Defaults to True.
@@ -234,7 +238,8 @@ def create_dataloaders(path_to_dir,
                                    from_ymd=from_ymd,
                                    to_ymd=to_ymd,
                                    pad=pad,
-                                   resize_img=resize_img)
+                                   resize_img=resize_img,
+                                   shift=shift)
         test_dataset = IceDataset(list_dir=test_data,
                                   path_to_dir=path_to_dir,
                                   in_period=in_period,
@@ -244,15 +249,16 @@ def create_dataloaders(path_to_dir,
                                   from_ymd=from_ymd,
                                   to_ymd=to_ymd,
                                   pad=pad,
-                                  resize_img=resize_img)
+                                  resize_img=resize_img,
+                                  shift=shift)
         train_true_size = train_dataset.true_size
         train_loader = torch.utils.data.DataLoader(train_dataset,
                                                     batch_size=batch_size,
-                                                      drop_last=True,
+                                                      drop_last=False,
                                                       shuffle=shuffle_dataset)
         test_loader = torch.utils.data.DataLoader(test_dataset,
                                                    batch_size=batch_size,
-                                                     drop_last=True)
+                                                     drop_last=False)
         return [train_loader, test_loader],train_true_size
     else:
         dataset = IceDataset(list_dir=list_dir,
@@ -264,10 +270,11 @@ def create_dataloaders(path_to_dir,
                              from_ymd=from_ymd,
                              to_ymd=to_ymd,
                              pad=pad,
-                             resize_img=resize_img)
+                             resize_img=resize_img,
+                             shift=shift)
         true_size = dataset.true_size
         loader = torch.utils.data.DataLoader(
-            dataset, batch_size=batch_size, drop_last=True)
+            dataset, batch_size=batch_size, drop_last=False)
         return loader,true_size
 
 if __name__=='__main__':

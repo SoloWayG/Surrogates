@@ -8,7 +8,7 @@ pipeline/coformers/
 pipeline/result/
 pipeline/results_golem/
 .vscode
-
+writer_test
 # Byte-compiled / optimized / DLL files
 __pycache__/
 .vscode/

@@ -38,36 +38,34 @@ def count_patch_size(imgsize):
 
 device =  torch.device("cuda" if torch.cuda.is_available() else "cpu")
 print(device)
-accumulation_steps = 4
+accumulation_steps = 2
 lr_max = 0.0005
 lr_min = 0.000001
 epochs = 140
-predict_period = 8
-in_period = 24
-batch_size = 2
+predict_period = 52
+in_period = 104
+batch_size = 4
 num_heads=12
-emb_mult=6
-place='kara'
+emb_mult=5
+place='laptev'
 PARALLEL = False
 from_ymd_train=[1979, 1, 1]
 to_ymd_train=[2012,1,1]
 from_ymd_test=[2012,1,2]
 to_ymd_test=[2020, 1, 1]
-load_predtrain = False
-depth = 12
+load_predtrain = True
+depth = 11
 LOSS = 'MAE'
-predtreain_path = '/nfs/home/gsololvyev/Ice/NO_conv_simg_predtrain_False_LOSS_MAE_depth_12_num_heads_12_emb_dim_720model_weights_in_per_36_pred_per_24_bs_2__dates_1979to_2012_stride7_sigmoid_old_patch'
-
-
+predtreain_path = '/projects/Surrogates/OLD_CONVTimeSformer_aug_simg_predtrain_True_LOSS_MAE_depth_11_num_heads_12_emb_dim_600/model_weights_in_per_104_pred_per_52_bs_1__dates_1979to_2012_stride7_sigmoid_ep80'
 
 #[2012,1,1] to [2012,1,1] [2020,1,1]
 stride = 7
 resize_img = [35,30]
 if resize_img is not None:
-    mask = np.load(fr'project\coastline_masks\{place}_mask.npy')
+    mask = np.load(fr'project/coastline_masks/{place}_mask.npy')
     mask = resize(mask, (resize_img[0], resize_img[1]), anti_aliasing=False)
 else:
-    mask = np.load(fr'project\coastline_masks\{place}_mask.npy')
+    mask = np.load(fr'project/coastline_masks/{place}_mask.npy')
 dataloader_train, img_sizes = create_dataloaders(path_to_dir=f'project/{place}',
                                             batch_size=batch_size,
                                             in_period=in_period,
@@ -107,12 +105,12 @@ dropout=0.1
 attn_drop_rate=0.1
 #Loss f-n
 ####################
-NAME = f'Conv_aug_simg_predtrain_{load_predtrain}_LOSS_{LOSS}dropout{dropout}_depth_{depth}attn_drop_rate{attn_drop_rate}_num_heads_{num_heads}_emb_dim_{embed_dim}'#last num_heads=6
+NAME = f'Sea_{place}_pred{load_predtrain}_LOSS_{LOSS}dropout{dropout}_depth_{depth}attn_drop_rate{attn_drop_rate}_num_heads_{num_heads}_emb_dim_{embed_dim}'#last num_heads=6
 ####################
 
 if LOSS=="MAE":
     loss_l1 = torch.nn.L1Loss()
-loss_sim = SSIM(data_range=1, size_average=True, channel=predict_period)
+#loss_sim = SSIM(data_range=1, size_average=True, channel=predict_period)
 
 # def loss_fn(x,y):
 #     out = loss_l1(x,y)
@@ -124,7 +122,7 @@ def loss_fn(x,y):
 
 #Optimizer
 if PARALLEL:
-    model = VisionTransformer_conv_aug(batch_size=batch_size, output_size=[img_sizes[0], img_sizes[1]], img_size=img_sizes[0],embed_dim=embed_dim,
+    model = TimeSformer(batch_size=batch_size, output_size=[img_sizes[0], img_sizes[1]], img_size=img_sizes[0],embed_dim=embed_dim,
                     num_frames=4, attention_type='divided_space_time', pretrained_model=False, in_chans=1, out_chans=predict_period,
                     patch_size=patch_size,num_heads=num_heads,in_periods=in_period,place=place,depth=depth,emb_mult=emb_mult,attn_drop_rate=attn_drop_rate,dropout=dropout)
     if load_predtrain:
@@ -134,13 +132,13 @@ if PARALLEL:
         test_dict = {i:model_dict_pred_train[i] for i in dict_matched}
         model_dict.update(test_dict)
         model.load_state_dict(model_dict)
-        # pretrained_dict = {k: v for k, v in model_dict_pred_train.items() if k in model_dict}
-        # model_dict.update(pretrained_dict)
-        # model.load_state_dict(pretrained_dict)
+        pretrained_dict = {k: v for k, v in model_dict_pred_train.items() if k in model_dict}
+        model_dict.update(pretrained_dict)
+        model.load_state_dict(pretrained_dict)
     model = torch.nn.DataParallel(model)
     model.to(device)
 else:
-    model = VisionTransformer_conv_aug(batch_size=batch_size, output_size=[img_sizes[0], img_sizes[1]], img_size=img_sizes[0],embed_dim=embed_dim,
+    model = TimeSformer(batch_size=batch_size, output_size=[img_sizes[0], img_sizes[1]], img_size=img_sizes[0],embed_dim=embed_dim,
                     num_frames=4, attention_type='divided_space_time', pretrained_model=False, in_chans=1, out_chans=predict_period,
                     patch_size=patch_size,num_heads=num_heads,in_periods=in_period,place=place,depth=depth,emb_mult=emb_mult,
                     attn_drop_rate=attn_drop_rate,dropout=dropout).to(device)
